@@ -15,7 +15,7 @@ for i in range(len(d)):
         for i in range(len(data['transcripts'])):
             s = data['transcripts'][i]['word'] + ' '
             transcript += s
-        #text.append(transcript)
+        text.append(transcript)
 
 ## v2 models
 model_path = 'openlm-research/open_llama_3b_v2'
@@ -31,13 +31,23 @@ model = LlamaForCausalLM.from_pretrained(
     model_path, torch_dtype=torch.float16, device_map='auto',
 )
 
-prompt = 'Q: ' + transcript + 'Is the given transcript real?\nA:'
-input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+preds = []
+for i in range(len(text)): #Try with a smaller loop to check working
+    prompt = 'Q: ' + transcript + 'Is the given transcript real or fake?\nA:'
+    input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+    
+    generation_output = model.generate(
+        input_ids=input_ids, max_new_tokens=32
+    )
+    print(tokenizer.decode(generation_output[0]))
+    preds.append(tokenizer.decode(generation_output[0]))
 
-generation_output = model.generate(
-    input_ids=input_ids, max_new_tokens=32
-)
-print(tokenizer.decode(generation_output[0]))
+for i in range(len(preds)):
+    if 'real' or 'Real' in preds[i] and d[i]['modify_type']=='real':
+        a+=1
+    elif 'fake' or 'Fake' in preds[i] and d[i]['modify_type']!='real':
+        a+=1
+print(a, len(preds)) #No.of correct predictions and total no.of transcripts
 
 '''import torch
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
